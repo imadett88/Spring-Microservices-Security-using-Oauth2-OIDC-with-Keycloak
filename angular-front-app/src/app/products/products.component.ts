@@ -7,21 +7,14 @@ import {HttpClient, HttpClientModule} from "@angular/common/http";
   styleUrls: ['./products.component.css']
 })
 export class ProductsComponent implements OnInit{
+    products: any;
+    constructor(private http: HttpClient) {
+    }
 
-  products: any;
-  constructor(private http : HttpClient) {
-  }
 
-  ngOnInit() {
-    this.http.get("http://localhost:8084/products")
-      .subscribe({
-        next : data => {
-          this.products = data;
-        },
-        error : err => {
-          console.log(err)
-        }
-      })
-  }
-
+    ngOnInit(): void {
+        this.http.get('http://localhost:8084/products').subscribe(data => {
+            this.products = data;
+        })
+    }
 }

@@ -1,7 +1,5 @@
 package ma.imdet.customerfrontthymeleafapp.security;
 
-import lombok.AllArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -23,37 +21,39 @@ import java.util.*;
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
-
-    @Autowired
     private ClientRegistrationRepository clientRegistrationRepository;
 
+    public SecurityConfig(ClientRegistrationRepository clientRegistrationRepository) {
+        this.clientRegistrationRepository = clientRegistrationRepository;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(Customizer.withDefaults())
-                .authorizeHttpRequests(ar->ar.requestMatchers("/","/oauth2Login/**","webjars/**","/h2-console/**").permitAll())
-                .authorizeHttpRequests(ar-> ar.anyRequest().authenticated())
+                .authorizeHttpRequests(ar->ar.requestMatchers("/", "/oauth2Login", "/webjars/**", "/h2-console/**").permitAll())
+                .authorizeHttpRequests(ar->ar.anyRequest().authenticated())
                 .headers(h->h.frameOptions(fo->fo.disable()))
                 .csrf(csrf->csrf.ignoringRequestMatchers("/h2-console/**"))
-                .oauth2Login(al->
-                                 al.loginPage("/oauth2Login")
-                                .defaultSuccessUrl("/"))
-                .logout((logout)->logout
+                .oauth2Login(al->al.loginPage("/oauth2Login")
+                        .defaultSuccessUrl("/"))
+                .logout((logout) -> logout
                         .logoutSuccessHandler(oidcLogoutSuccessHandler())
                         .logoutSuccessUrl("/").permitAll()
                         .clearAuthentication(true)
-                        .deleteCookies("JESSIONID"))
-                .exceptionHandling(eh->eh.accessDeniedPage("/notAuthozied"))
+                        .deleteCookies("JSESSIONID"))
+                .exceptionHandling((exceptionHandling) -> exceptionHandling
+                        .accessDeniedPage("/notAuthorized"))
                 .build();
     }
 
     private OidcClientInitiatedLogoutSuccessHandler oidcLogoutSuccessHandler() {
-        final OidcClientInitiatedLogoutSuccessHandler oidcLogoutSuccessHandler =
+        final OidcClientInitiatedLogoutSuccessHandler oidcClientInitiatedLogoutSuccessHandler =
                 new OidcClientInitiatedLogoutSuccessHandler(this.clientRegistrationRepository);
-        oidcLogoutSuccessHandler.setPostLogoutRedirectUri("{baseUrl}?logoutsuccess=true");
-        return oidcLogoutSuccessHandler;
+        oidcClientInitiatedLogoutSuccessHandler.setPostLogoutRedirectUri("http://localhost:8083/");
+        return oidcClientInitiatedLogoutSuccessHandler;
     }
+
     @Bean
     public GrantedAuthoritiesMapper userAuthoritiesMapper() {
         return (authorities) -> {

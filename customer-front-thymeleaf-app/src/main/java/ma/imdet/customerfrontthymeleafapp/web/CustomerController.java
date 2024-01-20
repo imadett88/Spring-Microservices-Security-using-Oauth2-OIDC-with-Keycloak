@@ -1,11 +1,12 @@
 package ma.imdet.customerfrontthymeleafapp.web;
 
+
 import ma.imdet.customerfrontthymeleafapp.entities.Customer;
 import ma.imdet.customerfrontthymeleafapp.model.Product;
 import ma.imdet.customerfrontthymeleafapp.repository.CustomerRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -26,41 +27,51 @@ import java.util.Map;
 
 @Controller
 public class CustomerController {
-    @Autowired
     private CustomerRepository customerRepository;
-
-    @Autowired
     private ClientRegistrationRepository clientRegistrationRepository;
+    @Value("${inventory.service.base.uri}")
+    private String inventoryServiceBaseUri;
+
+
+    public CustomerController(CustomerRepository customerRepository, ClientRegistrationRepository clientRegistrationRepository) {
+        this.customerRepository = customerRepository;
+        this.clientRegistrationRepository = clientRegistrationRepository;
+    }
 
     @GetMapping("/customers")
     @PreAuthorize("hasAuthority('ADMIN')")
     public String customers(Model model){
         List<Customer> customerList = customerRepository.findAll();
-        model.addAttribute("customers",customerList);
+        model.addAttribute("customers", customerList);
         return "customers";
     }
 
     @GetMapping("/products")
     public String products(Model model) {
+        try {
             SecurityContext context = SecurityContextHolder.getContext();
             Authentication authentication = context.getAuthentication();
             OAuth2AuthenticationToken oAuth2AuthenticationToken = (OAuth2AuthenticationToken) authentication;
             DefaultOidcUser oidcUser = (DefaultOidcUser) oAuth2AuthenticationToken.getPrincipal();
             String jwtTokenValue = oidcUser.getIdToken().getTokenValue();
-            RestClient restClient = RestClient.create("http://localhost:8084");
+            RestClient restClient = RestClient.create(inventoryServiceBaseUri);
             List<Product> products = restClient.get()
                     .uri("/products")
                     .headers(httpHeaders -> httpHeaders.set(HttpHeaders.AUTHORIZATION, "Bearer " + jwtTokenValue))
                     .retrieve()
-                    .body(new ParameterizedTypeReference<>(){});
+                    .body(new ParameterizedTypeReference<>() {
+                    });
             model.addAttribute("products", products);
             return "products";
-
+        }
+        catch (Exception e){
+            return "redirect:/notAutorized";
+        }
     }
 
     @GetMapping("/auth")
     @ResponseBody
-    public Authentication authentication(Authentication authentication){
+    public Authentication auth(Authentication authentication){
         return authentication;
     }
 
@@ -69,9 +80,9 @@ public class CustomerController {
         return "index";
     }
 
-    @GetMapping("/notAuthozied")
-    public String notAuthozied(){
-        return "notAuthozied";
+    @GetMapping("/notAuthorized")
+    public String notAuthorized(){
+        return "notAuthorized";
     }
 
     @GetMapping("/oauth2Login")
@@ -86,7 +97,4 @@ public class CustomerController {
         model.addAttribute("urls", oauth2AuthenticationUrls);
         return "oauth2Login";
     }
-
-
-
 }
